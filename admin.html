@@ -15,27 +15,11 @@
             flex-direction: column;
             height: 100vh;
         }
-        #map {
-            height: 400px;
-            margin-bottom: 20px;
-        }
-        #userList {
-            margin-bottom: 20px;
-        }
-        button {
-            margin: 5px;
-            padding: 5px 10px;
-            cursor: pointer;
-        }
-        .user-item {
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-        #distanceInfo {
-            margin-top: 10px;
-            font-weight: bold;
-        }
+        #map { height: 400px; margin-bottom: 20px; }
+        #userList { margin-bottom: 20px; }
+        button { margin: 5px; padding: 5px 10px; cursor: pointer; }
+        .user-item { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+        #distanceInfo { margin-top: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -47,7 +31,7 @@
 
     <script>
         const API_URL = 'http://localhost:3000'; // Replace with your backend URL
-        const token = 's#@@#jenewe#@!#!@FRERFE13213eweie3####@@#$%#@$%&ew@@#$@#';
+        const token = localStorage.getItem('token');
         const isAdmin = localStorage.getItem('isAdmin') === 'true';
         let map, userMarkers = {};
 
@@ -112,13 +96,12 @@
                             }
                         }
                     });
-                    // Adjust map view to fit all markers
                     const markerBounds = L.featureGroup(Object.values(userMarkers)).getBounds();
                     map.fitBounds(markerBounds, { padding: [50, 50] });
                 }
             } catch (error) {
                 console.error('Error fetching user list:', error);
-                document.getElementById('userList').innerHTML = '<p>Error fetching user list. Please try again later.</p>';
+                document.getElementById('userList').innerHTML = `<p>Error fetching user list: ${error.message}</p>`;
             }
         }
 
