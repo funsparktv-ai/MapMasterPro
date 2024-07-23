@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPS Tracking App - Admin</title>
+    <title>GPS Tracking App - Admin Panel</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <style>
@@ -16,16 +16,25 @@
             height: 100vh;
         }
         #map {
-            height: 600px;
+            height: 400px;
             margin-bottom: 20px;
         }
         #userList {
             margin-bottom: 20px;
         }
         button {
-            margin: 10px 0;
-            padding: 10px;
+            margin: 5px;
+            padding: 5px 10px;
             cursor: pointer;
+        }
+        .user-item {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        #distanceInfo {
+            margin-top: 10px;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -33,11 +42,12 @@
     <h1>GPS Tracking App - Admin Panel</h1>
     <div id="map"></div>
     <div id="userList"></div>
+    <div id="distanceInfo"></div>
     <button id="logout">Logout</button>
 
     <script>
         const API_URL = 'http://localhost:3000'; // Replace with your backend URL
-        const token = 's#@@#jenewe#@!#!@FRERFE13213eweie3####@@#$%#@$%&ew@@#$@#';
+        const token = localStorage.getItem('token');
         const isAdmin = localStorage.getItem('isAdmin') === 'true';
         let map, userMarkers = {};
 
@@ -52,6 +62,19 @@
             }).addTo(map);
         }
 
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius of the Earth in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = R * c; // Distance in km
+            return distance.toFixed(2);
+        }
+
         async function fetchUserList() {
             try {
                 const response = await fetch(`${API_URL}/users`, {
@@ -59,39 +82,109 @@
                         'Authorization': `Bearer ${token}`
                     }
                 });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const users = await response.json();
                 const userListElement = document.getElementById('userList');
                 userListElement.innerHTML = '<h2>User List</h2>';
-                users.forEach(user => {
-                    userListElement.innerHTML += `
-                        <p>Username: ${user.username}</p>
-                        <p>Last Known Location: ${user.lastLocation ? `Lat: ${user.lastLocation.lat.toFixed(6)}, Lng: ${user.lastLocation.lng.toFixed(6)}` : 'N/A'}</p>
-                        <hr>
-                    `;
+                if (users.length === 0) {
+                    userListElement.innerHTML += '<p>No users found.</p>';
+                } else {
+                    users.forEach(user => {
+                        const userItem = document.createElement('div');
+                        userItem.className = 'user-item';
+                        userItem.innerHTML = `
+                            <p>Username: ${user.username}</p>
+                            <p>Last Known Location: ${user.lastLocation ? `Lat: ${user.lastLocation.lat.toFixed(6)}, Lng: ${user.lastLocation.lng.toFixed(6)}` : 'N/A'}</p>
+                            <button onclick="showDistanceInfo(${user.id}, ${user.lastLocation ? user.lastLocation.lat : null}, ${user.lastLocation ? user.lastLocation.lng : null})">Show Distance Info</button>
+                            <button onclick="viewOnMap(${user.id}, ${user.lastLocation ? user.lastLocation.lat : null}, ${user.lastLocation ? user.lastLocation.lng : null})">View on Map</button>
+                        `;
+                        userListElement.appendChild(userItem);
 
-                    if (user.lastLocation) {
-                        if (userMarkers[user.id]) {
-                            userMarkers[user.id].setLatLng([user.lastLocation.lat, user.lastLocation.lng]);
-                        } else {
-                            userMarkers[user.id] = L.marker([user.lastLocation.lat, user.lastLocation.lng])
-                                .addTo(map)
-                                .bindPopup(`User: ${user.username}`);
+                        if (user.lastLocation) {
+                            if (userMarkers[user.id]) {
+                                userMarkers[user.id].setLatLng([user.lastLocation.lat, user.lastLocation.lng]);
+                            } else {
+                                userMarkers[user.id] = L.marker([user.lastLocation.lat, user.lastLocation.lng])
+                                    .addTo(map)
+                                    .bindPopup(`User: ${user.username}`);
+                            }
                         }
-                    }
-                });
-
-                // Adjust map view to fit all markers
-                const markerBounds = L.featureGroup(Object.values(userMarkers)).getBounds();
-                map.fitBounds(markerBounds, { padding: [50, 50] });
+                    });
+                    // Adjust map view to fit all markers
+                    const markerBounds = L.featureGroup(Object.values(userMarkers)).getBounds();
+                    map.fitBounds(markerBounds, { padding: [50, 50] });
+                }
             } catch (error) {
                 console.error('Error fetching user list:', error);
+                document.getElementById('userList').innerHTML = '<p>Error fetching user list. Please try again later.</p>';
             }
         }
 
-        document.getElementById('logout').addEventListener('click', () => {
-            localStorage.removeItem('token');
-            localStorage.removeItem('isAdmin');
-            window.location.href = 'login.html';
+        async function showDistanceInfo(userId, lastLat, lastLng) {
+            if (!lastLat || !lastLng) {
+                alert('No last known location for this user.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/users/${userId}/current-location`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const currentLocation = await response.json();
+
+                if (currentLocation.lat && currentLocation.lng) {
+                    const distance = calculateDistance(lastLat, lastLng, currentLocation.lat, currentLocation.lng);
+                    document.getElementById('distanceInfo').innerHTML = `
+                        <p>Last known location: Lat ${lastLat.toFixed(6)}, Lng ${lastLng.toFixed(6)}</p>
+                        <p>Current location: Lat ${currentLocation.lat.toFixed(6)}, Lng ${currentLocation.lng.toFixed(6)}</p>
+                        <p>Distance traveled: ${distance} km</p>
+                    `;
+                } else {
+                    document.getElementById('distanceInfo').innerHTML = '<p>Unable to calculate distance. Current location not available.</p>';
+                }
+            } catch (error) {
+                console.error('Error fetching current location:', error);
+                alert('Failed to fetch current location. Please try again.');
+            }
+        }
+
+        function viewOnMap(userId, lat, lng) {
+            if (!lat || !lng) {
+                alert('No location data available for this user.');
+                return;
+            }
+
+            map.setView([lat, lng], 15);
+            if (userMarkers[userId]) {
+                userMarkers[userId].openPopup();
+            }
+        }
+
+        document.getElementById('logout').addEventListener('click', async () => {
+            try {
+                const response = await fetch(`${API_URL}/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                localStorage.removeItem('token');
+                localStorage.removeItem('isAdmin');
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('Error logging out:', error);
+                alert('Failed to logout. Please try again.');
+            }
         });
 
         // Initialize the app
