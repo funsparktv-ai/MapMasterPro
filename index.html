@@ -44,8 +44,9 @@
         const API_URL = 'http://localhost:3000'; // Replace with your backend URL
         let currentPosition = null;
         let checkInTime = null;
-        const token = 's#@@#jenewe#@!#!@FRERFE13213eweie3####@@#$%#@$%&ew@@#$@#';
+        const token = localStorage.getItem('token') || 's#@@#jenewe#@!#!@FRERFE13213eweie3####@@#$%#@$%&ew@@#$@#';
         let map, marker;
+        let notificationInterval;
 
         if (!token) {
             window.location.href = 'login.html';
@@ -115,6 +116,7 @@
                     })
                 });
                 alert('Checked in successfully!');
+                startNotificationInterval();
             } catch (error) {
                 console.error('Error checking in:', error);
                 alert('Failed to check in. Please try again.');
@@ -144,6 +146,7 @@
                 });
                 alert(`Checked out successfully! Visit duration: ${duration.toFixed(2)} minutes`);
                 checkInTime = null;
+                stopNotificationInterval();
             } catch (error) {
                 console.error('Error checking out:', error);
                 alert('Failed to check out. Please try again.');
@@ -200,11 +203,43 @@
             }
         }
 
-        document.getElementById('logout').addEventListener('click', () => {
-            localStorage.removeItem('token');
-            localStorage.removeItem('isAdmin');
-            window.location.href = 'login.html';
+        document.getElementById('logout').addEventListener('click', async () => {
+            try {
+                await fetch(`${API_URL}/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                localStorage.removeItem('token');
+                localStorage.removeItem('isAdmin');
+                stopNotificationInterval();
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('Error logging out:', error);
+                alert('Failed to logout. Please try again.');
+            }
         });
+
+        function startNotificationInterval() {
+            if ("Notification" in window) {
+                Notification.requestPermission().then(function (permission) {
+                    if (permission === "granted") {
+                        notificationInterval = setInterval(() => {
+                            new Notification("GPS Tracking Reminder", {
+                                body: "Don't forget to log your location!"
+                            });
+                        }, 4 * 60 * 1000); // 4 minutes
+                    }
+                });
+            }
+        }
+
+        function stopNotificationInterval() {
+            if (notificationInterval) {
+                clearInterval(notificationInterval);
+            }
+        }
 
         // Initialize the app
         initMap();
