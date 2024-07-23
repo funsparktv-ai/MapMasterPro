@@ -59,17 +59,7 @@
                         'Authorization': `Bearer ${token}`
                     }
                 });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
                 const users = await response.json();
-                
-                if (!Array.isArray(users)) {
-                    throw new Error('Invalid response format');
-                }
-
                 const userListElement = document.getElementById('userList');
                 userListElement.innerHTML = '<h2>User List</h2>';
                 users.forEach(user => {
@@ -91,10 +81,8 @@
                 });
 
                 // Adjust map view to fit all markers
-                if (Object.keys(userMarkers).length > 0) {
-                    const markerBounds = L.featureGroup(Object.values(userMarkers)).getBounds();
-                    map.fitBounds(markerBounds, { padding: [50, 50] });
-                }
+                const markerBounds = L.featureGroup(Object.values(userMarkers)).getBounds();
+                map.fitBounds(markerBounds, { padding: [50, 50] });
             } catch (error) {
                 console.error('Error fetching user list:', error);
             }
