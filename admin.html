@@ -100,14 +100,19 @@
                             }
                         }
                     });
-                    const markerBounds = L.featureGroup(Object.values(userMarkers)).getBounds();
-                    map.fitBounds(markerBounds, { padding: [50, 50] });
+
+                    // Only fit the map to bounds if there are user markers
+                    if (Object.keys(userMarkers).length > 0) {
+                        const markerBounds = L.featureGroup(Object.values(userMarkers)).getBounds();
+                        map.fitBounds(markerBounds, { padding: [50, 50] });
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching user list:', error);
                 document.getElementById('userList').innerHTML = `<p>Error fetching user list: ${error.message}</p>`;
             }
         }
+
 
         async function showDistanceInfo(userId, lastLat, lastLng) {
             if (!lastLat || !lastLng) {
